@@ -1,0 +1,50 @@
+name: ts-jellyfin
+
+services:
+  ts-jellyfin:
+    image: tailscale/tailscale:latest
+    container_name: ts-jellyfin
+    hostname: ts-jellyfin
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_HOSTNAME=jellyfin
+      - TS_EXTRA_ARGS=--advertise-tags=tag:container --reset
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    network_mode: service:ts-jellyfin
+    volumes:
+      # Directorios de configuración y cache (se crean automáticamente si no existen)
+      - /srv/jellyfin/config:/config
+      - /srv/jellyfin/cache:/cache
+      # Directorio de medios - ajusta esta ruta según tu sistema
+      - ${PLEX_ROOT_DIR}:/media
+      # Para Windows, ejemplo alternativo:
+      # - C:/Users/TuUsuario/Videos:/media
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Argentina/Buenos_Aires
+    restart: unless-stopped
+    # Si prefieres no usar host networking, descomenta las siguientes líneas
+    # y comenta la línea "network_mode: host"
+    # ports:
+    #   - "8096:8096"      # Puerto web principal
+    #   - "8920:8920"      # Puerto HTTPS (opcional)
+    #   - "7359:7359/udp"  # Cliente discovery (opcional)
+    #   - "1900:1900/udp"  # DLNA discovery (opcional)
+
+    
+volumes:
+  tailscale-state:
+    driver: local
